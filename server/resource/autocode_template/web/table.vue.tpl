@@ -139,7 +139,7 @@
            <el-table-column label="{{.FieldDesc}}" width="200">
               <template #default="scope">
                  <div class="multiple-img-box">
-                    <el-image v-for="(item,index) in scope.row.{{.FieldJson}}" style="width: 80px; height: 80px" :src="getUrl(item)" fit="cover"/>
+                    <el-image v-for="(item,index) in scope.row.{{.FieldJson}}" :key="index" style="width: 80px; height: 80px" :src="getUrl(item)" fit="cover"/>
                 </div>
               </template>
            </el-table-column>
@@ -266,7 +266,7 @@
 
     <el-dialog v-model="detailShow" style="width: 800px" lock-scroll :before-close="closeDetailShow" title="查看详情" destroy-on-close>
       <el-scrollbar height="550px">
-        <el-descriptions column="1" border>
+        <el-descriptions :column="1" border>
         {{- range .Fields}}
                 <el-descriptions-item label="{{ .FieldDesc }}">
                 {{- if .DictType}}
@@ -452,7 +452,22 @@ const searchInfo = ref({})
 {{- if .NeedSort}}
 // 排序
 const sortChange = ({ prop, order }) => {
-  searchInfo.value.sort = prop
+  const sortMap = {
+    {{- range .Fields}}
+      {{- if and .Sort}}
+        {{- if not (eq .ColumnName "")}}
+            {{.FieldJson}}: '{{.ColumnName}}',
+        {{- end}}
+      {{- end}}
+    {{- end}}
+  }
+
+  let sort = sortMap[prop]
+  if(!sort){
+   sort = prop.replace(/[A-Z]/g, match => _${match.toLowerCase()})
+  }
+
+  searchInfo.value.sort = sort
   searchInfo.value.order = order
   getTableData()
 }
