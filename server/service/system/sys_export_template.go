@@ -8,12 +8,14 @@ import (
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/request"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	systemReq "github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
+	"github.com/flipped-aurora/gin-vue-admin/server/utils"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 	"mime/multipart"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type SysExportTemplateService struct {
@@ -126,19 +128,25 @@ func (sysExportTemplateService *SysExportTemplateService) ExportExcel(templateID
 		return
 	}
 	var templateInfoMap = make(map[string]string)
+	columns, err := utils.GetJSONKeys(template.TemplateInfo)
+	if err != nil {
+		return nil, "", err
+	}
 	err = json.Unmarshal([]byte(template.TemplateInfo), &templateInfoMap)
 	if err != nil {
 		return nil, "", err
 	}
-	var columns []string
 	var tableTitle []string
-	for key := range templateInfoMap {
-		columns = append(columns, key)
+	for _, key := range columns {
 		tableTitle = append(tableTitle, templateInfoMap[key])
 	}
 	selects := strings.Join(columns, ", ")
 	var tableMap []map[string]interface{}
-	db := global.GVA_DB.Select(selects).Table(template.TableName)
+	db := global.GVA_DB
+	if template.DBName != "" {
+		db = global.MustGetGlobalDBByDBName(template.DBName)
+	}
+	db = db.Select(selects).Table(template.TableName)
 
 	if len(template.Conditions) > 0 {
 		for _, condition := range template.Conditions {
@@ -293,7 +301,13 @@ func (sysExportTemplateService *SysExportTemplateService) ImportExcel(templateID
 	for key, title := range templateInfoMap {
 		titleKeyMap[title] = key
 	}
-	return global.GVA_DB.Transaction(func(tx *gorm.DB) error {
+
+	db := global.GVA_DB
+	if template.DBName != "" {
+		db = global.MustGetGlobalDBByDBName(template.DBName)
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
 		excelTitle := rows[0]
 		values := rows[1:]
 		for _, row := range values {
@@ -302,6 +316,15 @@ func (sysExportTemplateService *SysExportTemplateService) ImportExcel(templateID
 				key := titleKeyMap[excelTitle[ii]]
 				item[key] = value
 			}
+			needCreated := tx.Migrator().HasColumn(template.TableName, "created_at")
+			needUpdated := tx.Migrator().HasColumn(template.TableName, "updated_at")
+			if item["created_at"] == nil && needCreated {
+				item["created_at"] = time.Now()
+			}
+			if item["updated_at"] == nil && needUpdated {
+				item["updated_at"] = time.Now()
+			}
+
 			cErr := tx.Table(template.TableName).Create(&item).Error
 			if cErr != nil {
 				return cErr

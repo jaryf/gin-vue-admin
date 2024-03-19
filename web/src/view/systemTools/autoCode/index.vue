@@ -418,6 +418,7 @@
               style="width:100%"
               placeholder="请选择字段查询条件"
               clearable
+              :disabled="row.fieldType!=='json'"
             >
               <el-option
                 v-for="item in typeSearchOptions"
@@ -461,31 +462,12 @@
               :disabled="(scope.$index + 1) === form.fields.length"
               @click="moveDownField(scope.$index)"
             >下移</el-button>
-            <el-popover
-              v-model="scope.row.visible"
-              placement="top"
-            >
-              <p>确定删除吗？</p>
-              <div style="text-align: right; margin-top: 8px;">
-                <el-button
-                  type="primary"
-                  link
-                  @click="scope.row.visible = false"
-                >取消</el-button>
-                <el-button
-                  type="primary"
-                  @click="deleteField(scope.$index)"
-                >确定</el-button>
-              </div>
-              <template #reference>
-                <el-button
-                  type="primary"
-                  link
-                  icon="delete"
-                  @click="scope.row.visible = true"
-                >删除</el-button>
-              </template>
-            </el-popover>
+            <el-button
+              type="primary"
+              link
+              icon="delete"
+              @click="deleteField(scope.$index)"
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -620,6 +602,10 @@ const typeOptions = ref([
   {
     label: '文件（json字符串）',
     value: 'file',
+  },
+  {
+    label: 'JSON',
+    value: 'json',
   }
 ])
 
@@ -805,7 +791,13 @@ const closeDialog = () => {
   dialogFlag.value = false
 }
 const deleteField = (index) => {
-  form.value.fields.splice(index, 1)
+  ElMessageBox.confirm('确定要删除吗?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async() => {
+    form.value.fields.splice(index, 1)
+  })
 }
 const autoCodeForm = ref(null)
 const enterForm = async(isPreview) => {

@@ -89,33 +89,13 @@
           icon="plus"
           @click="openDialog"
         >新增</el-button>
-        <el-popover
-          v-model:visible="deleteVisible"
+
+        <el-button
+          icon="delete"
+          style="margin-left: 10px;"
           :disabled="!multipleSelection.length"
-          placement="top"
-          width="160"
-        >
-          <p>确定要删除吗？</p>
-          <div style="text-align: right; margin-top: 8px;">
-            <el-button
-              type="primary"
-              link
-              @click="deleteVisible = false"
-            >取消</el-button>
-            <el-button
-              type="primary"
-              @click="onDelete"
-            >确定</el-button>
-          </div>
-          <template #reference>
-            <el-button
-              icon="delete"
-              style="margin-left: 10px;"
-              :disabled="!multipleSelection.length"
-              @click="deleteVisible = true"
-            >删除</el-button>
-          </template>
-        </el-popover>
+          @click="onDelete"
+        >删除</el-button>
       </div>
       <el-table
         ref="multipleTable"
@@ -135,6 +115,16 @@
           width="180"
         >
           <template #default="scope">{{ formatDate(scope.row.CreatedAt) }}</template>
+        </el-table-column>
+        <el-table-column
+          align="left"
+          label="数据库"
+          prop="name"
+          width="120"
+        >
+          <template #defalut="scope">
+            <span>{{ scope.row.dbNname || "GVA库" }}</span>
+          </template>
         </el-table-column>
         <el-table-column
           align="left"
@@ -208,6 +198,40 @@
           :rules="rule"
           label-width="100px"
         >
+
+          <el-form-item
+            label="业务库"
+            prop="dbName"
+          >
+            <template #label>
+              <el-tooltip
+                content="注：需要提前到db-list自行配置多数据库，如未配置需配置后重启服务方可使用。若无法选择，请到config.yaml中设置disabled:false，选择导入导出的目标库。"
+                placement="bottom"
+                effect="light"
+              >
+                <div> 业务库 <el-icon><QuestionFilled /></el-icon> </div>
+              </el-tooltip>
+            </template>
+            <el-select
+              v-model="formData.dbName"
+              clearable
+              placeholder="选择业务库"
+            >
+              <el-option
+                v-for="item in dbList"
+                :key="item.aliasName"
+                :value="item.aliasName"
+                :label="item.aliasName"
+                :disabled="item.disable"
+              >
+                <div>
+                  <span>{{ item.aliasName }}</span>
+                  <span style="float:right;color:#8492a6;font-size:13px">{{ item.dbName }}</span>
+                </div>
+              </el-option>
+            </el-select>
+          </el-form-item>
+
           <el-form-item
             label="模板名称:"
             prop="name"
@@ -339,6 +363,7 @@ import { formatDate } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ref, reactive } from 'vue'
 import WarningBar from '@/components/warningBar/warningBar.vue'
+import { getDB } from '@/api/autoCode'
 
 defineOptions({
   name: 'ExportTemplate'
@@ -476,6 +501,16 @@ const total = ref(0)
 const pageSize = ref(10)
 const tableData = ref([])
 const searchInfo = ref({})
+const dbList = ref([])
+
+const getDbFunc = async() => {
+  const res = await getDB()
+  if (res.code === 0) {
+    dbList.value = res.data.dbList
+  }
+}
+
+getDbFunc()
 
 // 重置
 const onReset = () => {
@@ -545,35 +580,37 @@ const deleteRow = (row) => {
   })
 }
 
-// 批量删除控制标记
-const deleteVisible = ref(false)
-
 // 多选删除
 const onDelete = async() => {
-  const ids = []
-  if (multipleSelection.value.length === 0) {
-    ElMessage({
-      type: 'warning',
-      message: '请选择要删除的数据'
-    })
-    return
-  }
-  multipleSelection.value &&
-        multipleSelection.value.map(item => {
-          ids.push(item.ID)
-        })
-  const res = await deleteSysExportTemplateByIds({ ids })
-  if (res.code === 0) {
-    ElMessage({
-      type: 'success',
-      message: '删除成功'
-    })
-    if (tableData.value.length === ids.length && page.value > 1) {
-      page.value--
+  ElMessageBox.confirm('确定要删除吗?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async() => {
+    const ids = []
+    if (multipleSelection.value.length === 0) {
+      ElMessage({
+        type: 'warning',
+        message: '请选择要删除的数据'
+      })
+      return
     }
-    deleteVisible.value = false
-    getTableData()
-  }
+    multipleSelection.value &&
+    multipleSelection.value.map(item => {
+      ids.push(item.ID)
+    })
+    const res = await deleteSysExportTemplateByIds({ ids })
+    if (res.code === 0) {
+      ElMessage({
+        type: 'success',
+        message: '删除成功'
+      })
+      if (tableData.value.length === ids.length && page.value > 1) {
+        page.value--
+      }
+      getTableData()
+    }
+  })
 }
 
 // 行为控制标记（弹窗内部需要增还是改）
