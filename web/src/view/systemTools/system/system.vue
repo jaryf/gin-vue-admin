@@ -96,7 +96,7 @@
             <el-input v-model="config.zap['stacktrace-key']" />
           </el-form-item>
           <el-form-item label="日志留存时间(默认以天为单位)">
-            <el-input v-model.number="config.zap['max-age']" />
+            <el-input v-model.number="config.zap['retention-day']" />
           </el-form-item>
           <el-form-item label="显示行">
             <el-checkbox v-model="config.zap['show-line']" />
@@ -549,7 +549,7 @@ const email = async() => {
 
 <style lang="scss">
 .system {
-  @apply bg-white p-9 rounded;
+  @apply bg-white p-9 rounded dark:bg-slate-900;
   h2 {
     @apply p-2.5 my-2.5 text-lg shadow;
   }

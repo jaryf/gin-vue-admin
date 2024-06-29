@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type SysExportTemplateService struct {
@@ -189,8 +190,8 @@ func (sysExportTemplateService *SysExportTemplateService) ExportExcel(templateID
 		}
 	}
 	// 模板的默认limit
-	if limit == "" && template.Limit != 0 {
-		db = db.Limit(template.Limit)
+	if limit == "" && template.Limit != nil && *template.Limit != 0 {
+		db = db.Limit(*template.Limit)
 	}
 
 	// 通过参数传入offset
@@ -202,14 +203,43 @@ func (sysExportTemplateService *SysExportTemplateService) ExportExcel(templateID
 		}
 	}
 
+	// 获取当前表的所有字段
+	table := template.TableName
+	orderColumns, err := db.Migrator().ColumnTypes(table)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 创建一个 map 来存储字段名
+	fields := make(map[string]bool)
+
+	for _, column := range orderColumns {
+		fields[column.Name()] = true
+	}
+
 	// 通过参数传入order
 	order := values.Get("order")
-	if order != "" {
-		db = db.Order(order)
-	}
-	// 模板的默认order
+
 	if order == "" && template.Order != "" {
-		db = db.Order(template.Order)
+		// 如果没有order入参，这里会使用模板的默认排序
+		order = template.Order
+	}
+
+	if order != "" {
+		checkOrderArr := strings.Split(order, " ")
+		orderStr := ""
+		// 检查请求的排序字段是否在字段列表中
+		if _, ok := fields[checkOrderArr[0]]; !ok {
+			return nil, "", fmt.Errorf("order by %s is not in the fields", order)
+		}
+		orderStr = checkOrderArr[0]
+		if len(checkOrderArr) > 1 {
+			if checkOrderArr[1] != "asc" && checkOrderArr[1] != "desc" {
+				return nil, "", fmt.Errorf("order by %s is not secure", order)
+			}
+			orderStr = orderStr + " " + checkOrderArr[1]
+		}
+		db = db.Order(orderStr)
 	}
 
 	err = db.Debug().Find(&tableMap).Error
@@ -222,9 +252,14 @@ func (sysExportTemplateService *SysExportTemplateService) ExportExcel(templateID
 		var row []string
 		for _, column := range columns {
 			if len(template.JoinTemplate) > 0 {
-				columnArr := strings.Split(column, ".")
-				if len(columnArr) > 1 {
-					column = strings.Split(column, ".")[1]
+				columnAs := strings.Split(column, " as ")
+				if len(columnAs) > 1 {
+					column = strings.TrimSpace(strings.Split(column, " as ")[1])
+				} else {
+					columnArr := strings.Split(column, ".")
+					if len(columnArr) > 1 {
+						column = strings.Split(column, ".")[1]
+					}
 				}
 			}
 			row = append(row, fmt.Sprintf("%v", table[column]))
@@ -348,16 +383,15 @@ func (sysExportTemplateService *SysExportTemplateService) ImportExcel(templateID
 				item[key] = value
 			}
 
-			// 此处需要等待gorm修复HasColumn中的painc问题
-			//needCreated := tx.Migrator().HasColumn(template.TableName, "created_at")
-			//needUpdated := tx.Migrator().HasColumn(template.TableName, "updated_at")
-			//
-			//if item["created_at"] == nil && needCreated {
-			//	item["created_at"] = time.Now()
-			//}
-			//if item["updated_at"] == nil && needUpdated {
-			//	item["updated_at"] = time.Now()
-			//}
+			needCreated := tx.Migrator().HasColumn(template.TableName, "created_at")
+			needUpdated := tx.Migrator().HasColumn(template.TableName, "updated_at")
+
+			if item["created_at"] == nil && needCreated {
+				item["created_at"] = time.Now()
+			}
+			if item["updated_at"] == nil && needUpdated {
+				item["updated_at"] = time.Now()
+			}
 
 			items = append(items, item)
 		}

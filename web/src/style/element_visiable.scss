@@ -93,20 +93,28 @@
         @apply my-1;
     }
 }
-.el-menu-item{
-    border-radius: 2px;
-    &.is-active{
-        background-color: var(--el-color-primary) !important;
-        color: #fff !important;
+.el-menu--vertical{
+    .el-menu-item{
+        border-radius: 2px;
+        &.is-active{
+            background-color: var(--el-color-primary) !important;
+            color: #fff !important;
+        }
     }
 }
+
+
+.el-sub-menu.el-sub-menu__hide-arrow{
+    height: 44px;
+}
+
 
 .el-tabs__header{
     margin: 0 0 1px !important;
 }
 
 .el-sub-menu.is-active{
-    .el-sub-menu__title{
+    > .el-sub-menu__title{
         color: var(--el-color-primary) !important;
     }
 }
@@ -119,5 +127,7 @@
 html.dark {
     /* 自定义深色背景颜色 */
     --el-bg-color: rgb(30 ,41 ,59);
-    --el-bg-color-overlay: rgba(30 ,41 ,59, 0.8);
+    --el-bg-color-overlay: rgb(40 ,51 ,69);
+    --el-fill-color-light:  rgb(15 ,23 ,42);
+    --el-fill-color : rgb(15 ,23 ,42);
 }

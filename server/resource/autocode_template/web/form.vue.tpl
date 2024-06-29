@@ -5,7 +5,7 @@
       {{- range .Fields}}
         <el-form-item label="{{.FieldDesc}}:" prop="{{.FieldJson}}">
        {{- if .CheckDataSource}}
-        <el-select v-model="formData.{{.FieldJson}}" placeholder="请选择{{.FieldDesc}}" style="width:100%" :clearable="{{.Clearable}}" >
+        <el-select {{if eq .DataSource.Association 2}} multiple {{ end }} v-model="formData.{{.FieldJson}}" placeholder="请选择{{.FieldDesc}}" style="width:100%" :clearable="{{.Clearable}}" >
           <el-option v-for="(item,key) in dataSource.{{.FieldJson}}" :key="key" :label="item.label" :value="item.value" />
         </el-select>
        {{- else }}
@@ -116,7 +116,7 @@ const formData = ref({
             {{.FieldJson}}: '',
             {{- end }}
             {{- if eq .FieldType "int" }}
-            {{.FieldJson}}: {{- if .DictType }} undefined{{ else }} 0{{- end }},
+            {{.FieldJson}}: {{- if or .DictType .DataSource }} undefined{{ else }} 0{{- end }},
             {{- end }}
             {{- if eq .FieldType "time.Time" }}
             {{.FieldJson}}: new Date(),
@@ -138,6 +138,9 @@ const formData = ref({
             {{- end }}
             {{- if eq .FieldType "json" }}
             {{.FieldJson}}: {},
+            {{- end }}
+            {{- if eq .FieldType "array" }}
+            {{.FieldJson}}: [],
             {{- end }}
         {{- end }}
         })
@@ -173,7 +176,7 @@ const init = async () => {
     if (route.query.id) {
       const res = await find{{.StructName}}({ ID: route.query.id })
       if (res.code === 0) {
-        formData.value = res.data.re{{.Abbreviation}}
+        formData.value = res.data
         type.value = 'update'
       }
     } else {

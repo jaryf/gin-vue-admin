@@ -2,7 +2,7 @@
   <div>
     <warning-bar
       href="https://www.bilibili.com/video/BV1kv4y1g7nT?p=3"
-      title="此功能为开发环境使用，不建议发布到生产，具体使用效果请看视频https://www.bilibili.com/video/BV1kv4y1g7nT?p=3"
+      title="此功能为开发环境使用，不建议发布到生产，具体使用效果请点我观看。页面数据内容会自动暂存，如需清除，请点击【清除缓存】"
     />
     <!-- 从数据库直接获取字段 -->
     <div class="gva-search-box">
@@ -105,6 +105,16 @@
           </el-form>
         </el-collapse-item>
       </el-collapse>
+      <div class="flex justify-end">
+        <el-button
+            type="primary"
+            @click="clearCatch()"
+        >清除暂存</el-button>
+        <el-button
+            type="primary"
+            @click="catchData()"
+        >暂存</el-button>
+      </div>
     </div>
     <div class="gva-search-box">
       <!-- 初始版本自动化代码工具 -->
@@ -286,14 +296,14 @@
           <el-form-item>
             <template #label>
               <el-tooltip
-                content="注：自动迁移生成的文件到yaml配置的对应位置"
-                placement="bottom"
-                effect="light"
+                  content="注：自动同步数据库表结构，如果不需要可以选择关闭。"
+                  placement="bottom"
+                  effect="light"
               >
-                <div> 自动移动文件 <el-icon><QuestionFilled /></el-icon></div>
+                <div> 同步表结构 <el-icon><QuestionFilled /></el-icon></div>
               </el-tooltip>
             </template>
-            <el-checkbox v-model="form.autoMoveFile" />
+            <el-checkbox v-model="form.autoMigrate" />
           </el-form-item>
         </div>
       </el-form>
@@ -423,6 +433,28 @@
             </template>
           </el-table-column>
           <el-table-column
+              align="left"
+              prop="fieldIndexType"
+              label="索引类型"
+              width="160"
+          >
+            <template #default="{row}">
+              <el-select
+                  v-model="row.fieldIndexType"
+                  style="width:100%"
+                  placeholder="请选择字段索引类型"
+                  clearable
+              >
+                <el-option
+                    v-for="item in typeIndexOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column
             align="left"
             prop="dataTypeLong"
             label="数据库字段长度"
@@ -541,6 +573,7 @@
         :dialog-middle="dialogMiddle"
         :type-options="typeOptions"
         :type-search-options="typeSearchOptions"
+        :type-index-options="typeIndexOptions"
       />
 
     </el-drawer>
@@ -663,6 +696,10 @@ const typeOptions = ref([
   {
     label: 'JSON',
     value: 'json',
+  },
+  {
+    label: '数组',
+    value: 'array',
   }
 ])
 
@@ -697,6 +734,17 @@ const typeSearchOptions = ref([
   }
 ])
 
+const typeIndexOptions = ref([
+  {
+    label: 'index',
+    value: 'index'
+  },
+  {
+    label: 'uniqueIndex',
+    value: 'uniqueIndex'
+  }
+])
+
 const fieldTemplate = {
   fieldName: '',
   fieldDesc: '',
@@ -714,8 +762,10 @@ const fieldTemplate = {
   primaryKey: false,
   clearable: true,
   fieldSearchType: '',
+  fieldIndexType: '',
   dictType: '',
   dataSource: {
+    association:1,
     table: '',
     label: '',
     value: ''
@@ -743,7 +793,7 @@ const form = ref({
   businessDB: '',
   autoCreateApiToSql: true,
   autoCreateMenuToSql: true,
-  autoMoveFile: true,
+  autoMigrate: true,
   gvaModel: true,
   autoCreateResource: false,
   fields: []
@@ -808,6 +858,14 @@ const editAndAddField = (item) => {
   dialogFlag.value = true
   if (item) {
     addFlag.value = 'edit'
+    if(!item.dataSource){
+      item.dataSource = {
+        association:1,
+        table: '',
+        label: '',
+        value: ''
+      }
+    }
     bk.value = JSON.parse(JSON.stringify(item))
     dialogMiddle.value = item
   } else {
@@ -912,37 +970,12 @@ const enterForm = async(isPreview) => {
         if (data.headers?.success === 'false') {
           return
         }
-        if (form.value.autoMoveFile) {
           ElMessage({
             type: 'success',
             message: '自动化代码创建成功，自动移动成功'
           })
-          return
-        }
-        ElMessage({
-          type: 'success',
-          message: '自动化代码创建成功，正在下载'
-        })
-        const blob = new Blob([data])
-        const fileName = 'ginvueadmin.zip'
-        if ('download' in document.createElement('a')) {
-          // 不是IE浏览器
-          const url = window.URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.style.display = 'none'
-          link.href = url
-          link.setAttribute('download', fileName)
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link) // 下载完成移除元素
-          window.URL.revokeObjectURL(url) // 释放掉blob对象
-        } else {
-          // IE 10+
-          window.navigator.msSaveBlob(blob, fileName)
-        }
+        clearCatch()
       }
-    } else {
-      return false
     }
   })
 }
@@ -983,7 +1016,6 @@ const getColumnFunc = async() => {
     form.value.abbreviation = tbHump
     form.value.description = tbHump + '表'
     form.value.autoCreateApiToSql = true
-    form.value.autoMoveFile = true
     form.value.fields = []
     res.data.columns &&
           res.data.columns.forEach(item => {
@@ -1003,9 +1035,11 @@ const getColumnFunc = async() => {
                 errorText: '',
                 clearable: true,
                 fieldSearchType: '',
+                fieldIndexType: '',
                 dictType: '',
                 front: true,
                 dataSource: {
+                  association:1,
                   table: '',
                   label: '',
                   value: ''
@@ -1071,5 +1105,39 @@ watch(() => route.params.id, () => {
     init()
   }
 })
+
+
+const catchData = () => {
+  window.sessionStorage.setItem('autoCode', JSON.stringify(form.value))
+}
+
+const getCatch = () => {
+  const data = window.sessionStorage.getItem('autoCode')
+  if(data){
+    form.value = JSON.parse(data)
+  }
+}
+
+const clearCatch = async () => {
+  form.value = {
+    structName: '',
+    tableName: '',
+    packageName: '',
+    package: '',
+    abbreviation: '',
+    description: '',
+    businessDB: '',
+    autoCreateApiToSql: true,
+    autoCreateMenuToSql: true,
+    autoMigrate: true,
+    gvaModel: true,
+    autoCreateResource: false,
+    fields: []
+  }
+  await nextTick()
+  window.sessionStorage.removeItem('autoCode')
+}
+
+getCatch()
 
 </script>

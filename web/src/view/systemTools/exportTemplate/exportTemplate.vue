@@ -119,13 +119,18 @@
         <el-table-column
           align="left"
           label="数据库"
-          prop="name"
           width="120"
         >
-          <template #defalut="scope">
+          <template #default="scope">
             <span>{{ scope.row.dbNname || "GVA库" }}</span>
           </template>
         </el-table-column>
+        <el-table-column
+            align="left"
+            label="模板标识"
+            prop="templateID"
+            width="120"
+        />
         <el-table-column
           align="left"
           label="模板名称"
@@ -136,12 +141,6 @@
           align="left"
           label="表名称"
           prop="tableName"
-          width="120"
-        />
-        <el-table-column
-          align="left"
-          label="模板标识"
-          prop="templateID"
           width="120"
         />
         <el-table-column
@@ -431,6 +430,7 @@ const templatePlaceholder = `模板信息格式：key标识数据库column列名
   "table_column4":"第四列",
 }
 如果增加了JOINS导出key应该列为 {table_name1.table_column1:"第一列",table_name2.table_column2:"第二列"}
+如果有重复的列名导出格式应为 {table_name1.table_column1 as key:"第一列",table_name2.table_column2 as key2:"第二列"}
 JOINS模式下不支持导入
 `
 

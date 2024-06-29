@@ -6,7 +6,6 @@ import {  setBodyPrimaryColor } from '@/utils/format'
 export const useAppStore = defineStore('app', () => {
   const theme = ref(localStorage.getItem('theme') || 'light')
   const device = ref("")
-
   const config = reactive({
     weakness: false,
     grey: false,
@@ -17,13 +16,15 @@ export const useAppStore = defineStore('app', () => {
     layout_side_collapsed_width : 80,
     layout_side_item_height : 48,
     show_watermark: false,
+
+    side_mode : 'normal'
   })
 
   // 初始化配置
   Object.keys(originSetting).forEach(key => {
       config[key] = originSetting[key]
     if(key === 'primaryColor'){
-      setBodyPrimaryColor(originSetting[key])
+      setBodyPrimaryColor(originSetting[key],config.darkMode)
     }
   })
 
@@ -72,7 +73,7 @@ export const useAppStore = defineStore('app', () => {
 
   const togglePrimaryColor = (e) => {
     config.primaryColor = e;
-    setBodyPrimaryColor(e)
+    setBodyPrimaryColor(e,config.darkMode)
   }
 
   const toggleTabs = (e) => {
@@ -119,10 +120,15 @@ export const useAppStore = defineStore('app', () => {
         config.show_watermark = e;
   }
 
+  const toggleSideModel= (e) =>{
+    config.side_mode = e
+  }
+
   if(config.darkMode === 'auto'){
     toggleDarkModeAuto()
   }
 
+    toggleGrey(config.grey)
 
   return {
     theme,
@@ -138,7 +144,8 @@ export const useAppStore = defineStore('app', () => {
     toggleConfigSideWidth,
     toggleConfigSideCollapsedWidth,
     toggleConfigSideItemHeight,
-    toggleConfigWatermark
+    toggleConfigWatermark,
+    toggleSideModel
   }
 
 })

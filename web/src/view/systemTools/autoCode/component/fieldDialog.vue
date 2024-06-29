@@ -138,6 +138,26 @@
       <el-form-item label="主键">
         <el-checkbox v-model="middleDate.primaryKey" />
       </el-form-item>
+      <el-form-item
+          label="索引类型"
+          prop="fieldIndexType"
+      >
+        <el-select
+            v-model="middleDate.fieldIndexType"
+            :disabled="middleDate.fieldType === 'json'"
+            style="width:100%"
+            placeholder="请选择字段索引类型"
+            clearable
+        >
+          <el-option
+              v-for="item in typeIndexOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+              :disabled="canSelect(item.value)"
+          />
+        </el-select>
+      </el-form-item>
       <el-form-item label="前端可见">
         <el-switch v-model="middleDate.front" />
       </el-form-item>
@@ -150,38 +170,61 @@
       <el-form-item label="是否可清空">
         <el-switch v-model="middleDate.clearable" />
       </el-form-item>
+      <el-form-item label="隐藏查询条件">
+        <el-switch :disabled="!middleDate.fieldSearchType" v-model="middleDate.fieldSearchHide" />
+      </el-form-item>
       <el-form-item label="校验失败文案">
         <el-input v-model="middleDate.errorText" />
       </el-form-item>
     </el-form>
     <el-collapse v-model="activeNames">
       <el-collapse-item
-          title="数据源配置（此配置为高级配置，如编程基础不牢，可能导致自动化代码不可用）"
-          name="1"
+        title="数据源配置（此配置为高级配置，如编程基础不牢，可能导致自动化代码不可用）"
+        name="1"
       >
         <el-row :gutter="8">
           <el-col
-              :span="8"
+            :span="3"
+          >
+            <el-select
+              v-model="middleDate.dataSource.association"
+              placeholder="关联模式"
+              @change="associationChange"
+            >
+              <el-option
+                label="一对一"
+                :value="1"
+              />
+              <el-option
+                label="一对多"
+                :value="2"
+              />
+            </el-select>
+          </el-col>
+
+
+          <el-col
+            :span="7"
           >
             <el-input
-                v-model="middleDate.dataSource.table"
-                placeholder="数据源表"
+              v-model="middleDate.dataSource.table"
+              placeholder="数据源表"
             />
           </el-col>
           <el-col
-              :span="8"
+            :span="7"
           >
             <el-input
-                v-model="middleDate.dataSource.label"
-                placeholder="展示用字段"
+              v-model="middleDate.dataSource.label"
+              placeholder="展示用字段"
             />
           </el-col>
           <el-col
-              :span="8"
+            :span="7"
           >
             <el-input
-                v-model="middleDate.dataSource.value"
-                placeholder="存储用字端"
+              v-model="middleDate.dataSource.value"
+              placeholder="存储用字端"
             />
           </el-col>
         </el-row>
@@ -195,6 +238,7 @@ import { toLowerCase, toSQLLine } from '@/utils/stringFun'
 import { getSysDictionaryList } from '@/api/sysDictionary'
 import WarningBar from '@/components/warningBar/warningBar.vue'
 import { ref } from 'vue'
+import { ElMessageBox } from 'element-plus'
 
 defineOptions({
   name: 'FieldDialog'
@@ -219,12 +263,27 @@ const props = defineProps({
       return []
     }
   },
+  typeIndexOptions: {
+    type: Array,
+    default: function() {
+      return []
+    }
+  },
 })
 
 const activeNames = ref([])
 
 const middleDate = ref({})
 const dictOptions = ref([])
+
+const validateDataTypeLong = (rule, value, callback) => {
+  const regex = /^('([^']*)'(?:,'([^']+)'*)*)$/;
+  if (middleDate.value.fieldType == "enum" && !regex.test(value)) {
+    callback(new Error("枚举值校验错误"));
+  } else {
+    callback();
+  }
+};
 
 const rules = ref({
   fieldName: [
@@ -241,7 +300,10 @@ const rules = ref({
   ],
   fieldType: [
     { required: true, message: '请选择字段类型', trigger: 'blur' }
-  ]
+  ],
+  dataTypeLong: [
+    { validator: validateDataTypeLong, trigger: "blur" }
+  ],
 })
 
 const init = async() => {
@@ -275,6 +337,24 @@ const canSelect = (item) => {
 const clearOther = () => {
   middleDate.value.fieldSearchType = ''
   middleDate.value.dictType = ''
+}
+
+const associationChange = (val) => {
+  if (val === 2) {
+    ElMessageBox.confirm(
+      '一对多关联模式下，数据类型会改变为数组，后端表现为json，具体表现为数组模式，是否继续？',
+      '提示',
+      {
+        confirmButtonText: '继续',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      middleDate.value.fieldType = 'array'
+    }).catch(() => {
+      middleDate.value.dataSource.association = 1
+    })
+  }
 }
 
 const fieldDialogFrom = ref(null)
