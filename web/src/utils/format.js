@@ -60,6 +60,8 @@ export const ReturnArrImg = (arr) => {
   return imgArr
 }
 
+export const returnArrImg = ReturnArrImg
+
 export const onDownloadFile = (url) => {
   window.open(path + url)
 }
@@ -121,5 +123,5 @@ export const setBodyPrimaryColor = (  primaryColor, darkMode ) =>{
 const baseUrl = ref(import.meta.env.VITE_BASE_API)
 
 export const getBaseUrl = () => {
-    return  baseUrl.value === "/" ? "" : baseUrl.value + "/"
+    return  baseUrl.value === "/" ? "" : baseUrl.value
 }

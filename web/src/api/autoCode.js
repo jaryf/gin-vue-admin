@@ -12,8 +12,7 @@ export const createTemp = (data) => {
   return service({
     url: '/autoCode/createTemp',
     method: 'post',
-    data,
-    responseType: 'blob'
+    data
   })
 }
 
@@ -117,11 +116,10 @@ export const deletePackageApi = (data) => {
   })
 }
 
-export const createPlugApi = (data) => {
+export const getTemplatesApi = () => {
   return service({
-    url: '/autoCode/createPlug',
-    method: 'post',
-    data
+    url: '/autoCode/getTemplates',
+    method: 'get'
   })
 }
 
@@ -159,3 +157,31 @@ export const llmAuto = (params) => {
     }
   })
 }
+
+
+export const addFunc = (data) => {
+  return service({
+    url: '/autoCode/addFunc',
+    method: 'post',
+    data
+  })
+}
+
+export const initMenu = (data) => {
+  return service({
+    url: '/autoCode/initMenu',
+    method: 'post',
+    data
+  })
+}
+
+export const initAPI = (data) => {
+  return service({
+    url: '/autoCode/initAPI',
+    method: 'post',
+    data
+  })
+}
+
+
+

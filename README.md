@@ -1,6 +1,6 @@
 
 <div align=center>
-<img src="http://qmplusimg.henrongyi.top/gvalogo.jpg" width=300" height="300" />
+<img src="http://qmplusimg.henrongyi.top/gvalogo.jpg" width="300" height="300" />
 </div>
 <div align=center>
 <img src="https://img.shields.io/badge/golang-1.20-blue"/>
@@ -94,11 +94,9 @@ cd server
 # 使用 go mod 并安装go依赖包
 go generate
 
-# 编译 
-go build -o server main.go (windows编译命令为go build -o server.exe main.go )
+# 运行
+go run . 
 
-# 运行二进制
-./server (windows运行命令为 server.exe)
 ```
 
 ### 2.2 web项目

@@ -8,10 +8,6 @@
           icon="plus"
           @click="addAuthority(0)"
         >新增角色</el-button>
-        <el-icon
-          class="cursor-pointer"
-          @click="toDoc('https://www.bilibili.com/video/BV1kv4y1g7nT?p=8&vd_source=f2640257c21e3b547a790461ed94875e')"
-        ><VideoCameraFilled /></el-icon>
       </div>
       <el-table
         :data="tableData"
@@ -189,8 +185,7 @@ import WarningBar from '@/components/warningBar/warningBar.vue'
 
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { toDoc } from '@/utils/doc'
-import { VideoCameraFilled } from '@element-plus/icons-vue'
+
 
 defineOptions({
   name: 'Authority'
@@ -236,20 +231,13 @@ const rules = ref({
   ]
 })
 
-const page = ref(1)
-const total = ref(0)
-const pageSize = ref(999)
 const tableData = ref([])
-const searchInfo = ref({})
 
 // 查询
 const getTableData = async() => {
-  const table = await getAuthorityList({ page: page.value, pageSize: pageSize.value, ...searchInfo.value })
+  const table = await getAuthorityList()
   if (table.code === 0) {
-    tableData.value = table.data.list
-    total.value = table.data.total
-    page.value = table.data.page
-    pageSize.value = table.data.pageSize
+    tableData.value = table.data
   }
 }
 
@@ -299,9 +287,7 @@ const deleteAuth = (row) => {
           type: 'success',
           message: '删除成功!'
         })
-        if (tableData.value.length === 1 && page.value > 1) {
-          page.value--
-        }
+
         getTableData()
       }
     })
