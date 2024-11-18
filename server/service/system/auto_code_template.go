@@ -64,8 +64,8 @@ func (s *autoCodeTemplate) Create(ctx context.Context, info request.AutoCode) er
 	if err != nil {
 		return err
 	}
-	// 增加判断: 重复创建struct
-	if AutocodeHistory.Repeat(info.BusinessDB, info.StructName, info.Package) {
+	// 增加判断: 重复创建struct 或者重复的简称
+	if AutocodeHistory.Repeat(info.BusinessDB, info.StructName, info.Abbreviation, info.Package) {
 		return errors.New("已经创建过此数据结构,请勿重复创建!")
 	}
 
@@ -190,6 +190,11 @@ func (s *autoCodeTemplate) Preview(ctx context.Context, info request.AutoCode) (
 	if err != nil {
 		return nil, errors.Wrap(err, "查询包失败!")
 	}
+	// 增加判断: 重复创建struct 或者重复的简称
+	if AutocodeHistory.Repeat(info.BusinessDB, info.StructName, info.Abbreviation, info.Package) {
+		return nil, errors.New("已经创建过此数据结构或重复简称,请勿重复创建!")
+	}
+
 	codes := make(map[string]strings.Builder)
 	preview := make(map[string]string)
 	codes, _, _, err = s.generate(ctx, info, entity)
@@ -290,6 +295,32 @@ func (s *autoCodeTemplate) AddFunc(info request.AutoFunc) error {
 	return nil
 }
 
+func (s *autoCodeTemplate) GetApiAndServer(info request.AutoFunc) (map[string]string, error) {
+	autoPkg := model.SysAutoCodePackage{}
+	err := global.GVA_DB.First(&autoPkg, "package_name = ?", info.Package).Error
+	if err != nil {
+		return nil, err
+	}
+	if autoPkg.Template != "package" {
+		info.IsPlugin = true
+	}
+
+	apiStr, err := s.getTemplateStr("api.go", info)
+	if err != nil {
+		return nil, err
+	}
+	serverStr, err := s.getTemplateStr("server.go", info)
+	if err != nil {
+		return nil, err
+	}
+	jsStr, err := s.getTemplateStr("api.js", info)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"api": apiStr, "server": serverStr, "js": jsStr}, nil
+
+}
+
 func (s *autoCodeTemplate) getTemplateStr(t string, info request.AutoFunc) (string, error) {
 	tempPath := filepath.Join(global.GVA_CONFIG.AutoCode.Root, global.GVA_CONFIG.AutoCode.Server, "resource", "function", t+".tpl")
 	files, err := template.ParseFiles(tempPath)
@@ -374,10 +405,19 @@ func (s *autoCodeTemplate) addTemplateToFile(t string, info request.AutoFunc) er
 
 	switch t {
 	case "api.go":
+		if info.IsAi && info.ApiFunc != "" {
+			getTemplateStr = info.ApiFunc
+		}
 		target = filepath.Join(global.GVA_CONFIG.AutoCode.Root, global.GVA_CONFIG.AutoCode.Server, "api", "v1", info.Package, info.HumpPackageName+".go")
 	case "server.go":
+		if info.IsAi && info.ServerFunc != "" {
+			getTemplateStr = info.ServerFunc
+		}
 		target = filepath.Join(global.GVA_CONFIG.AutoCode.Root, global.GVA_CONFIG.AutoCode.Server, "service", info.Package, info.HumpPackageName+".go")
 	case "api.js":
+		if info.IsAi && info.JsFunc != "" {
+			getTemplateStr = info.JsFunc
+		}
 		target = filepath.Join(global.GVA_CONFIG.AutoCode.Root, global.GVA_CONFIG.AutoCode.Web, "api", info.Package, info.PackageName+".js")
 	}
 	if info.IsPlugin {
